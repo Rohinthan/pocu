@@ -57,12 +57,12 @@ ${ui.color.bold('Single-file commands:')}
   pocu /chat                       Interactive chat, no directory scan
 
 ${ui.color.bold('Setup:')}
+  pocu /api [provider] [key]       Configure or view AI API key (alias: /connect)
   pocu /model [provider:model]     Show or switch active model
-  pocu /connect                    Save an API key for a provider
   pocu /history [n]                Show past prompts/commands
 
 ${ui.color.bold('Config:')}
-  Copy .env.example to .env and set your API key, or run "pocu /connect".
+  Copy .env.example to .env and set your API key, or run "pocu /api".
   Settings are stored at ${HOME_DIR}
 `;
 
