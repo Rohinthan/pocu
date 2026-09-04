@@ -1,35 +1,35 @@
 'use strict';
 
-const { fileExists, writeFileSafe } = require('../lib/fs');
+const { fileExists, readFileSafe, writeFileSafe } = require('../lib/fs');
 const { askAI } = require('../lib/api');
 const { stripCodeFence, languageFromExt } = require('../lib/util');
-const { confirm } = require('../lib/diff');
+const { diffLines, printDiff, confirm } = require('../lib/diff');
 const ui = require('../lib/ui');
 
 /**
  * /create <filename> "<description>"
  * Generates a brand-new file's content from a natural-language description.
- * Example: ai /create hello.py "a script that prints Hello World"
+ * Example: pocu /create hello.py "a script that prints Hello World"
  */
 async function createCommand(args, ctx) {
   const filename = args[0];
   const description = args.slice(1).join(' ').trim();
 
   if (!filename) {
-    ui.error('Usage: ai /create <filename> "<description>"');
+    ui.error('Usage: pocu /create <filename> "<description>"');
     return;
   }
   if (!description) {
-    ui.error('Please describe what the file should contain, e.g.\n  ai /create hello.py "prints Hello World"');
+    ui.error('Please describe what the file should contain, e.g.\n  pocu /create hello.py "prints Hello World"');
     return;
   }
 
+  let oldContent = '';
   if (fileExists(filename)) {
-    const overwrite = await confirm(`${filename} already exists. Overwrite? (y/n)`);
-    if (!overwrite) {
-      ui.warn('Cancelled.');
-      return;
-    }
+    try {
+      oldContent = readFileSafe(filename, ctx.config.maxFileBytes).content;
+      ui.warn(`${filename} already exists. Proposed changes will be diffed against existing file.`);
+    } catch (_) {}
   }
 
   const lang = languageFromExt(filename);
@@ -54,9 +54,10 @@ async function createCommand(args, ctx) {
   }
   spinner.stop();
 
+  const diffResult = diffLines(oldContent, generated);
   console.log('');
-  ui.info('Preview:');
-  console.log(ui.color.gray(generated.split('\n').slice(0, 30).join('\n')));
+  ui.info(oldContent ? 'Proposed changes:' : 'Proposed additions:');
+  printDiff(diffResult);
 
   const ok = await confirm(`Save to ${filename}? (y/n)`);
   if (!ok) {
