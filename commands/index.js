@@ -24,6 +24,7 @@ const registry = {
   model: require('./model'),
   history: require('./history'),
   connect: require('./connect'),
+  api: require('./connect'),
 };
 
 /**
