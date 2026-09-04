@@ -1,0 +1,4 @@
+.env
+SKILL.md
+node_modules/
+*.tmp
