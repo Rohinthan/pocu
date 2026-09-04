@@ -23,7 +23,7 @@ pkg install nodejs-lts git -y
 node -v                        # must print v18 or higher
 
 # 2. Get the project
-git clone <your-repo-url> pocu
+git clone https://github.com/Rohinthan/pocu.git
 cd pocu
 
 # 3. Install (no external packages to fetch — this just wires up the CLI)
