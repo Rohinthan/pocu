@@ -4,7 +4,7 @@ const path = require('path');
 const { readFileSafe, writeFileSafe, fileExists } = require('../lib/fs');
 const { askAI } = require('../lib/api');
 const { stripCodeFence, languageFromExt } = require('../lib/util');
-const { confirm } = require('../lib/diff');
+const { diffLines, printDiff, confirm } = require('../lib/diff');
 const ui = require('../lib/ui');
 
 // Suggests a conventional test file name/location per language.
@@ -59,13 +59,19 @@ async function testCommand(args, ctx) {
   spinner.stop();
 
   const testPath = suggestTestPath(filePath);
-  console.log('');
-  ui.info(`Generated test file preview (will save to ${testPath}):`);
-  console.log(ui.color.gray(testCode.split('\n').slice(0, 30).join('\n')));
-
+  let oldTestContent = '';
   if (fileExists(testPath)) {
     ui.warn(`${testPath} already exists.`);
+    try {
+      oldTestContent = readFileSafe(testPath, ctx.config.maxFileBytes).content;
+    } catch (_) {}
   }
+
+  const diffResult = diffLines(oldTestContent, testCode);
+  console.log('');
+  ui.info(oldTestContent ? `Proposed changes to ${testPath}:` : `Proposed tests (will save to ${testPath}):`);
+  printDiff(diffResult);
+
   const ok = await confirm(`Save tests to ${testPath}? (y/n)`);
   if (!ok) {
     ui.warn('Discarded. No file was written.');
