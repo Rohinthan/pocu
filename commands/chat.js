@@ -61,15 +61,82 @@ async function chatCommand(args, ctx) {
     },
   ];
 
+  let isClosed = false;
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
+  rl.on('close', () => {
+    isClosed = true;
+  });
 
-  while (true) {
-    const userInput = (await ask(ui.color.cyan('you> '))).trim();
+  const ask = (q) =>
+    new Promise((resolve) => {
+      if (isClosed) return resolve('exit');
+      try {
+        rl.question(q, (answer) => resolve(answer || ''));
+      } catch (_) {
+        resolve('exit');
+      }
+    });
+
+  while (!isClosed) {
+    let rawInput;
+    try {
+      rawInput = await ask(ui.color.cyan('you> '));
+    } catch (_) {
+      break;
+    }
+    const userInput = rawInput.trim();
 
     if (!userInput) continue;
     if (userInput === 'exit' || userInput === '/exit' || userInput === 'quit') {
       break;
+    }
+
+    if (userInput.startsWith('/')) {
+      const parts = userInput.slice(1).trim().split(/\s+/);
+      const cmdName = parts[0].toLowerCase();
+      const cmdArgs = parts.slice(1);
+
+      if (cmdName === 'help') {
+        console.log(`
+${ui.color.bold('Available commands in chat:')}
+  /run <file> [args...]       Execute a file (.c/.py/.js)
+  /fix <file>                 Fix bugs in a file with diff preview
+  /explain <file>             Explain a file's behavior
+  /refactor <file>            Refactor a file with diff preview
+  /test <file>                Generate tests with diff preview
+  /create <file> "<desc>"     Create a new file with diff preview
+  /diff <file>                Preview proposed changes
+  /apply <file>               Apply staged changes
+  /model [provider:model]     Show or switch active model
+  /history [n]                View command history
+  /clear                      Clear conversation history
+  /exit                       Exit chat mode
+Reference any file inline with @relative/path (e.g. @app.py explain this)
+`);
+        continue;
+      }
+
+      if (cmdName === 'clear') {
+        messages.length = 1;
+        ui.info('Cleared conversation history.');
+        continue;
+      }
+
+      const { getCommand } = require('./index');
+      const handler = getCommand(cmdName);
+      if (handler) {
+        try {
+          await handler(cmdArgs, ctx);
+          addHistory({ command: `/${cmdName}`, detail: cmdArgs.join(' ') });
+        } catch (err) {
+          ui.error(`Command /${cmdName} failed: ${err.message}`);
+        }
+        console.log('');
+        continue;
+      } else {
+        ui.warn(`Unknown command /${cmdName}. Type /help for available commands.`);
+        continue;
+      }
     }
 
     const { text, notes } = expandMentions(userInput, root, ctx.config.maxFileBytes);
