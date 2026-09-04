@@ -57,31 +57,66 @@ function promptMasked(question) {
   });
 }
 
+function maskKey(key) {
+  if (!key) return '(none)';
+  if (key.length <= 8) return '****';
+  return `${key.slice(0, 4)}...${key.slice(-4)}`;
+}
+
 /**
- * /connect
- * Interactively asks which provider and stores the API key locally at
- * ~/.ai-cli/config.json. This file is plaintext on disk (like most CLI
- * tool credential files, e.g. ~/.npmrc) -- keep your device secured.
+ * /api or /connect
+ * View current API provider configuration or set a new API key.
+ * Usage:
+ *   /api                     Show active provider/key, and prompt to change
+ *   /api <provider>          Prompt to set key for provider
+ *   /api <provider> <key>    Set key for provider immediately
  */
 async function connectCommand(args, ctx) {
-  const providerArg = args[0];
   const providers = Object.keys(PROVIDERS).filter((p) => p !== 'local');
-  let provider = providerArg && providers.includes(providerArg.toLowerCase())
-    ? providerArg.toLowerCase()
-    : null;
 
-  if (!provider) {
-    ui.info(`Which provider? (${providers.join(' / ')})`);
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    provider = await new Promise((resolve) => {
-      rl.question('> ', (answer) => {
-        rl.close();
-        resolve(answer.trim().toLowerCase());
-      });
-    });
+  // Direct CLI setting: /api <provider> <key>
+  if (args.length >= 2) {
+    const p = args[0].toLowerCase();
+    const k = args.slice(1).join(' ').trim();
+    if (!PROVIDERS[p]) {
+      ui.error(`Unknown provider "${p}". Available: ${providers.join(', ')}`);
+      return;
+    }
+    const envVar = PROVIDER_ENV_MAP[p] || `${p.toUpperCase()}_API_KEY`;
+    const model = DEFAULT_MODELS[p] || ctx.config.model;
+    saveStoredConfig({ provider: p, model, [envVar]: k });
+    ctx.config.provider = p;
+    ctx.config.model = model;
+    ctx.config.keys[p] = k;
+    ui.success(`Configured ${p} API key and active model "${model}".`);
+    return;
   }
 
-  if (!providers.includes(provider)) {
+  // Display current status
+  const currentProvider = ctx.config.provider || 'gemini';
+  const currentKey = ctx.config.keys ? ctx.config.keys[currentProvider] : '';
+  ui.info(`Active Provider: ${currentProvider}`);
+  ui.info(`Active Model:    ${ctx.config.model}`);
+  ui.info(`Active Key:      ${maskKey(currentKey)}`);
+
+  let provider = null;
+  if (args[0] && PROVIDERS[args[0].toLowerCase()]) {
+    provider = args[0].toLowerCase();
+  }
+
+  if (!provider) {
+    ui.info(`Select provider to configure (${providers.join(' / ')}):`);
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise((resolve) => {
+      rl.question(`[default: ${currentProvider}] > `, (ans) => {
+        rl.close();
+        resolve(ans.trim().toLowerCase());
+      });
+    });
+    provider = answer || currentProvider;
+  }
+
+  if (!PROVIDERS[provider]) {
     ui.error(`Unknown provider "${provider}". Available: ${providers.join(', ')}`);
     return;
   }
@@ -90,14 +125,17 @@ async function connectCommand(args, ctx) {
   const key = await promptMasked(`Enter your ${provider} API key: `);
 
   if (!key) {
-    ui.warn('No key entered. Cancelled.');
+    ui.warn('No key entered. Configuration kept unchanged.');
     return;
   }
 
   const model = DEFAULT_MODELS[provider] || ctx.config.model;
   saveStoredConfig({ provider, model, [envVarName]: key });
+  ctx.config.provider = provider;
+  ctx.config.model = model;
+  ctx.config.keys[provider] = key;
   ui.success(`Saved ${provider} API key to ${HOME_DIR}/config.json`);
-  ui.info(`Active provider is now "${provider}", model "${model}". Switch anytime with "pocu /model <provider>:<model>".`);
+  ui.info(`Active provider is now "${provider}", model "${model}". Switch anytime with "/model <provider>:<model>".`);
 }
 
 module.exports = connectCommand;
