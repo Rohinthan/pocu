@@ -80,7 +80,7 @@ async function chatCommand(args, ctx) {
   while (!isClosed) {
     let rawInput;
     try {
-      rawInput = await ask(ui.color.cyan('you> '));
+      rawInput = await ask(ui.color.cyan('pocu> '));
     } catch (_) {
       break;
     }
@@ -99,6 +99,8 @@ async function chatCommand(args, ctx) {
       if (cmdName === 'help') {
         console.log(`
 ${ui.color.bold('Available commands in chat:')}
+  /api [provider] [key]       Configure or view active API keys
+  /model [provider:model]     Show or switch active model
   /run <file> [args...]       Execute a file (.c/.py/.js)
   /fix <file>                 Fix bugs in a file with diff preview
   /explain <file>             Explain a file's behavior
@@ -107,7 +109,6 @@ ${ui.color.bold('Available commands in chat:')}
   /create <file> "<desc>"     Create a new file with diff preview
   /diff <file>                Preview proposed changes
   /apply <file>               Apply staged changes
-  /model [provider:model]     Show or switch active model
   /history [n]                View command history
   /clear                      Clear conversation history
   /exit                       Exit chat mode
