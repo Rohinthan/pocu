@@ -1,7 +1,7 @@
 'use strict';
 
 const readline = require('readline');
-const { saveStoredConfig, HOME_DIR } = require('../config');
+const { saveStoredConfig, HOME_DIR, PROVIDER_ENV_MAP, DEFAULT_MODELS } = require('../config');
 const { PROVIDERS } = require('../lib/api');
 const ui = require('../lib/ui');
 
@@ -86,7 +86,7 @@ async function connectCommand(args, ctx) {
     return;
   }
 
-  const envVarName = provider === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY';
+  const envVarName = PROVIDER_ENV_MAP[provider] || `${provider.toUpperCase()}_API_KEY`;
   const key = await promptMasked(`Enter your ${provider} API key: `);
 
   if (!key) {
@@ -94,9 +94,10 @@ async function connectCommand(args, ctx) {
     return;
   }
 
-  saveStoredConfig({ provider, [envVarName]: key });
+  const model = DEFAULT_MODELS[provider] || ctx.config.model;
+  saveStoredConfig({ provider, model, [envVarName]: key });
   ui.success(`Saved ${provider} API key to ${HOME_DIR}/config.json`);
-  ui.info(`Active provider is now "${provider}". Switch anytime with "ai /model <provider>:<model>".`);
+  ui.info(`Active provider is now "${provider}", model "${model}". Switch anytime with "pocu /model <provider>:<model>".`);
 }
 
 module.exports = connectCommand;
