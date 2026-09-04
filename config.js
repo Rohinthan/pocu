@@ -69,20 +69,58 @@ function saveStoredConfig(partial) {
   return merged;
 }
 
+const DEFAULT_MODELS = {
+  gemini: 'gemini-flash-lite-latest',
+  google: 'gemini-flash-lite-latest',
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-3-5-sonnet-20241022',
+  claude: 'claude-3-5-sonnet-20241022',
+  deepseek: 'deepseek-chat',
+  groq: 'llama-3.3-70b-versatile',
+  openrouter: 'google/gemini-2.0-flash-lite-001',
+  ollama: 'llama3',
+  local: 'llama3',
+};
+
+const PROVIDER_ENV_MAP = {
+  openai: 'OPENAI_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  google: 'GEMINI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  claude: 'ANTHROPIC_API_KEY',
+  deepseek: 'DEEPSEEK_API_KEY',
+  groq: 'GROQ_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+  ollama: 'OLLAMA_BASE_URL',
+  local: 'OLLAMA_BASE_URL',
+};
+
 function getConfig() {
   const dotenv = loadDotEnv(path.join(PROJECT_ROOT, '.env'));
   const stored = loadStoredConfig();
 
   // Priority: stored config (set at runtime via /model, /connect) > .env > process.env > defaults
-  const provider =
-    stored.provider || dotenv.AI_PROVIDER || process.env.AI_PROVIDER || 'openai';
-  const model =
-    stored.model || dotenv.AI_MODEL || process.env.AI_MODEL || 'gpt-4o-mini';
+  const provider = (
+    stored.provider || dotenv.AI_PROVIDER || process.env.AI_PROVIDER || 'gemini'
+  ).toLowerCase();
 
-  const openaiKey =
-    stored.OPENAI_API_KEY || dotenv.OPENAI_API_KEY || process.env.OPENAI_API_KEY || '';
-  const geminiKey =
-    stored.GEMINI_API_KEY || dotenv.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
+  let model = stored.model || dotenv.AI_MODEL || process.env.AI_MODEL;
+  if (!model || model === 'test' || model === 'gemini-1.5-flash' || model === 'gemini-2.5-flash') {
+    model = DEFAULT_MODELS[provider] || 'gpt-4o-mini';
+  }
+
+  const keys = {
+    openai: stored.OPENAI_API_KEY || dotenv.OPENAI_API_KEY || process.env.OPENAI_API_KEY || '',
+    gemini: stored.GEMINI_API_KEY || dotenv.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+    google: stored.GEMINI_API_KEY || dotenv.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '',
+    anthropic: stored.ANTHROPIC_API_KEY || dotenv.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '',
+    claude: stored.ANTHROPIC_API_KEY || dotenv.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY || '',
+    deepseek: stored.DEEPSEEK_API_KEY || dotenv.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY || '',
+    groq: stored.GROQ_API_KEY || dotenv.GROQ_API_KEY || process.env.GROQ_API_KEY || '',
+    openrouter: stored.OPENROUTER_API_KEY || dotenv.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '',
+    ollama: stored.OLLAMA_BASE_URL || dotenv.OLLAMA_BASE_URL || process.env.OLLAMA_BASE_URL || '',
+    local: stored.OLLAMA_BASE_URL || dotenv.OLLAMA_BASE_URL || process.env.OLLAMA_BASE_URL || '',
+  };
 
   const timeoutMs = parseInt(
     dotenv.AI_TIMEOUT_MS || process.env.AI_TIMEOUT_MS || '60000',
@@ -96,10 +134,7 @@ function getConfig() {
   return {
     provider,
     model,
-    keys: {
-      openai: openaiKey,
-      gemini: geminiKey,
-    },
+    keys,
     timeoutMs,
     maxFileBytes,
   };
@@ -109,6 +144,8 @@ module.exports = {
   getConfig,
   saveStoredConfig,
   loadStoredConfig,
+  DEFAULT_MODELS,
+  PROVIDER_ENV_MAP,
   HOME_DIR,
   STORE_CONFIG_PATH,
   HISTORY_PATH,
