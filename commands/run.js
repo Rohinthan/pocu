@@ -23,9 +23,10 @@ async function runCommand(args, ctx) {
   }
 
   const { content } = readFileSafe(filePath, ctx.config.maxFileBytes);
+  const fileArgs = args.slice(1);
 
   const spinner = new ui.Spinner(`Running ${filePath} (${lang.name})...`).start();
-  const result = await executeFile(filePath, content);
+  const result = await executeFile(filePath, content, fileArgs);
   spinner.stop();
 
   if (result.blocked) {
