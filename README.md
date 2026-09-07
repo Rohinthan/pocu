@@ -96,17 +96,26 @@ pocu>
 ```
 
 Inside this session:
-- **Chat directly**: Type your prompt normally (no quotes or `node pocu.js` needed).
+- **Chat directly**: Type instructions normally (e.g. `create a python script to check system memory and run it`).
+- **Autonomous agent loop**: Like Claude Code CLI or Antigravity CLI, `pocu` creates and edits files in your directory, renders green `+` additions and red `-` deletions diffs, prompts for confirmation before writing, runs shell commands with approval, and inspects command output to verify correctness.
 - **Reference files**: Include `@path/to/file` in your message to attach file contents into context.
-- **Run slash commands**: Execute commands directly at the `pocu> ` prompt.
+- **Run slash commands**: Execute built-in commands directly at the `pocu> ` prompt.
 
 Example interactive workflow:
 ```text
-pocu> @main.py what does this script do?
-pocu> /run main.py foo bar
-pocu> /fix main.py
-pocu> /create utils.py "helper functions for string manipulation"
-pocu> /api
+pocu> create a python script calc.py with an add function and run it
+[info] Proposed new file calc.py:
++ def add(a, b):
++     return a + b
++ print(add(10, 20))
+Apply changes to calc.py? (y/n) y
+[ok] Saved calc.py
+Execute: python3 calc.py? (y/n) y
+stdout:
+30
+[ok] Command completed with exit code 0
+ai> The file calc.py was created and executed successfully, outputting 30.
+pocu> /run calc.py
 pocu> /exit
 ```
 
@@ -222,6 +231,7 @@ pocu/
     ask.js             /ask - single-turn query handler
     history.js         /history - command history viewer
   lib/
+    agent.js           Autonomous ReAct agent loop (write, read, execute, list)
     bridge.py          Python communication link for AI API networking
     api.js             Provider abstraction and bridge dispatch
     diff.js            LCS diff algorithm and colored printer
