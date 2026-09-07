@@ -59,7 +59,7 @@ async function createCommand(args, ctx) {
   ui.info(oldContent ? 'Proposed changes:' : 'Proposed additions:');
   printDiff(diffResult);
 
-  const ok = await confirm(`Save to ${filename}? (y/n)`);
+  const ok = await confirm(`Save to ${filename}? (y/n)`, ctx && ctx.rl);
   if (!ok) {
     ui.warn('Discarded. No file was written.');
     return;
