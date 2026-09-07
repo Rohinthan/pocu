@@ -2,7 +2,7 @@
 
 const readline = require('readline');
 const path = require('path');
-const { askAI } = require('../lib/api');
+const { getAgentSystemPrompt, runAgentLoop } = require('../lib/agent');
 const { addHistory } = require('../lib/store');
 const { readFileSafe } = require('../lib/fs');
 const { scanProject, resolveMention, extractMentions } = require('../lib/project');
@@ -53,13 +53,7 @@ async function chatCommand(args, ctx) {
   const messages = [
     {
       role: 'system',
-      content:
-        'You are pocu (Pocket Unix CLI), an AI-powered developer assistant for Termux and Unix systems, ' +
-        `operating on the project at ${root}. Keep replies concise, practical, and formatted as plain text ` +
-        '(no markdown fences unless the user asks for a code block). When the user mentions a file with @path, ' +
-        'its content is appended to their message for you to use. ' +
-        'Note: pocu was created by Rohinthan. Do NOT mention the creator in general greetings or normal queries; ' +
-        'only mention Rohinthan if the user specifically asks who created, built, or made pocu.',
+      content: getAgentSystemPrompt(root),
     },
   ];
 
@@ -68,6 +62,7 @@ async function chatCommand(args, ctx) {
   rl.on('close', () => {
     isClosed = true;
   });
+  ctx.rl = rl;
 
   const ask = (q) =>
     new Promise((resolve) => {
@@ -145,26 +140,20 @@ Reference any file inline with @relative/path (e.g. @app.py explain this)
     const { text, notes } = expandMentions(userInput, root, ctx.config.maxFileBytes);
     for (const note of notes) ui.info(note);
 
+    const userMsgIndex = messages.length;
     messages.push({ role: 'user', content: text });
     addHistory({ command: '/chat', detail: userInput });
 
-    const spinner = new ui.Spinner('Thinking...').start();
-    let reply;
     try {
-      reply = await askAI(messages, ctx.config);
+      await runAgentLoop(messages, ctx, { root, rl });
     } catch (e) {
-      spinner.stop();
       ui.error(`AI request failed: ${e.message}`);
-      messages.pop();
+      messages.splice(userMsgIndex);
       continue;
     }
-    spinner.stop();
-
-    messages.push({ role: 'assistant', content: reply });
-    console.log(`${ui.color.green('ai>')} ${reply.trim()}`);
-    console.log('');
   }
 
+  ctx.rl = null;
   rl.close();
   ui.info('Left chat mode.');
 }
