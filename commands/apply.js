@@ -41,7 +41,7 @@ async function applyCommand(args, ctx) {
   ui.info('Changes to apply:');
   printDiff(diffResult);
 
-  const ok = await confirm(`Apply these changes to ${filePath}? (y/n)`);
+  const ok = await confirm(`Apply these changes to ${filePath}? (y/n)`, ctx && ctx.rl);
   if (!ok) {
     ui.warn('Discarded. Pending change kept in case you want to retry.');
     return;
