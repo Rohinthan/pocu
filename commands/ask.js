@@ -1,7 +1,8 @@
 'use strict';
 
+const readline = require('readline');
 const { readFileSafe, previewContent } = require('../lib/fs');
-const { askAI } = require('../lib/api');
+const { getAgentSystemPrompt, runAgentLoop } = require('../lib/agent');
 const { languageFromExt } = require('../lib/util');
 const ui = require('../lib/ui');
 
@@ -25,13 +26,12 @@ async function askCommand(args, ctx) {
     return;
   }
 
+  const root = ctx.projectRoot || process.cwd();
+
   const messages = [
     {
       role: 'system',
-      content:
-        'You are pocu (Pocket Unix CLI), an AI-powered developer assistant for Termux and Unix systems. ' +
-        'Keep answers focused, precise, and practical. Note: pocu was created by Rohinthan. ' +
-        'Do NOT mention the creator in general greetings or normal queries; only mention Rohinthan if the user specifically asks who created, built, or made pocu.',
+      content: getAgentSystemPrompt(root),
     },
   ];
 
@@ -44,25 +44,28 @@ async function askCommand(args, ctx) {
     const lang = languageFromExt(filePath);
     messages.push({
       role: 'user',
-      content: `Here is a ${lang} file for context:\n\n${content}\n\nQuestion: ${question}`,
+      content: `Here is a ${lang} file for context:\n\n${content}\n\nTask/Question: ${question}`,
     });
   } else {
     messages.push({ role: 'user', content: question });
   }
 
-  const spinner = new ui.Spinner('Thinking...').start();
-  let reply;
-  try {
-    reply = await askAI(messages, ctx.config);
-  } catch (e) {
-    spinner.stop();
-    ui.error(`AI request failed: ${e.message}`);
-    return;
+  let localRl = null;
+  if (!ctx.rl) {
+    localRl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    ctx.rl = localRl;
   }
-  spinner.stop();
 
-  console.log('');
-  console.log(reply.trim());
+  try {
+    await runAgentLoop(messages, ctx, { root, rl: ctx.rl });
+  } catch (e) {
+    ui.error(`AI request failed: ${e.message}`);
+  } finally {
+    if (localRl) {
+      localRl.close();
+      ctx.rl = null;
+    }
+  }
 }
 
 module.exports = askCommand;
