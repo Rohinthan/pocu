@@ -56,7 +56,7 @@ async function refactorCommand(args, ctx) {
   ui.info('Proposed changes:');
   printDiff(diffResult);
 
-  const ok = await confirm(`Apply refactor to ${filePath}? (y/n)`);
+  const ok = await confirm(`Apply refactor to ${filePath}? (y/n)`, ctx && ctx.rl);
   if (!ok) {
     ui.warn('Discarded. No changes were written.');
     return;
