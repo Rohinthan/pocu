@@ -72,7 +72,7 @@ async function testCommand(args, ctx) {
   ui.info(oldTestContent ? `Proposed changes to ${testPath}:` : `Proposed tests (will save to ${testPath}):`);
   printDiff(diffResult);
 
-  const ok = await confirm(`Save tests to ${testPath}? (y/n)`);
+  const ok = await confirm(`Save tests to ${testPath}? (y/n)`, ctx && ctx.rl);
   if (!ok) {
     ui.warn('Discarded. No file was written.');
     return;
